@@ -1,13 +1,16 @@
 from telegram import InlineKeyboardMarkup, InlineKeyboardButton
-import itertools
-from src.models import User, Message, Tag
+from src.models import User, Tag
 
 MAX_BUTTONS_IN_ROW=2
 
 def start(bot, update):
     tags = ', '.join([tag.title for tag in _current_user(update).tags])
-    bot.send_message(chat_id=update.message.chat_id,
-                     text=tags)
+    if tags:
+        bot.send_message(chat_id=update.message.chat_id,
+                         text=tags)
+    else:
+        bot.send_message(chat_id=update.message.chat_id,
+                         text='Add some tags')
 
 def add_tag(bot, update, args):
     Tag.create(user=_current_user(update),
@@ -36,7 +39,7 @@ def _current_user(update):
 
 def _build_markup(update):
     tags = _current_user(update).popular_tags()
-    markup = InlineKeyboardMarkup(
+    return InlineKeyboardMarkup(
         [InlineKeyboardButton(tags[0].title, callback_data=tags[0].title),
          InlineKeyboardButton(tags[1].title, callback_data=tags[1].title)]
         [InlineKeyboardButton(tags[2].title, callback_data=tags[2].title)]

@@ -1,6 +1,6 @@
 from peewee import (
-    CharField, BigIntegerField, fn, Model,
-    ForeignKeyField
+    CharField, BigIntegerField, Model, ForeignKeyField,
+    fn, JOIN
 )
 from database import db
 
@@ -14,15 +14,9 @@ class User(BaseModel):
     first_name = CharField(null=True)
     last_name = CharField(null=True)
 
-    def popular_tags(amount=3):
-        count = fn.COUNT(MessageTags.id)
-        print((Tag
-               .select(Tag, count.alias('entry_count'))
-               .join(MessageTags)
-               .join(Message)
-               .group_by(Tag)
-               .order_by(count.desc(), Tag.title)[:amount])[0])
-        return []
+    def popular_tags(self):
+        return popular_tags(self)
+
 
 class Message(BaseModel):
     text = CharField()
@@ -35,3 +29,13 @@ class Tag(BaseModel):
 class MessageTags(BaseModel):
     message = ForeignKeyField(Message)
     tag = ForeignKeyField(Tag)
+
+def popular_tags(user, amount=3):
+    count = fn.COUNT(MessageTags.id)
+    return (Tag
+            .select(Tag, count.alias('entry_count'))
+            .join(MessageTags, JOIN.LEFT_OUTER)
+            .join(Message, JOIN.LEFT_OUTER)
+            .where(Tag.user == user)
+            .group_by(Tag)
+            .order_by(count.desc(), Tag.title)[:amount])
