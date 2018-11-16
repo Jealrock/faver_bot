@@ -21,6 +21,11 @@ def bookmark(bot, update):
     #bot.send_message(chat_id=update.message.chat_id,
     #                 text=update.message.text)
 
+def set_bookmark(bot, update):
+    bot.send_message(chat_id=update.callback_query.message.chat_id,
+                     text='Fired')
+
+
 def _resend_message_with_markup(bot, update):
     # !!! Only 8 messages in a row available
     # !!! Any number of rows available(at high numbers breaks shit)
@@ -40,7 +45,7 @@ def _current_user(update):
 def _build_markup(update):
     tags = _current_user(update).popular_tags()
     return InlineKeyboardMarkup(
-        [InlineKeyboardButton(tags[0].title, callback_data=tags[0].title),
-         InlineKeyboardButton(tags[1].title, callback_data=tags[1].title)]
-        [InlineKeyboardButton(tags[2].title, callback_data=tags[2].title)]
+        [[InlineKeyboardButton(tags[0].title, callback_data=tags[0].id),
+         InlineKeyboardButton(tags[1].title, callback_data=tags[1].id)],
+        [InlineKeyboardButton(tags[2].title, callback_data=tags[2].id)]]
     )
