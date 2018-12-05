@@ -14,11 +14,20 @@ dispatcher = updater.dispatcher
 start_handler = CommandHandler('start', handlers.start)
 tag_handler = CommandHandler('tag', handlers.add_tag,
                              pass_args=True)
+search_handler = CommandHandler('search', handlers.search_messages,
+                                pass_args=True)
 forward_handler = MessageHandler(Filters.forwarded, handlers.bookmark)
-message_keyboard_handler = CallbackQueryHandler(handlers.set_bookmark)
+message_update_tag_handler = CallbackQueryHandler(
+        handlers.set_bookmark,
+        pattern="^.*?\\btag_id\\b.*?$")
+message_update_done_handler = CallbackQueryHandler(
+        handlers.clear_message_from_history,
+        pattern="^.*?\\bdone\\b.*?$")
 
 dispatcher.add_handler(start_handler)
 dispatcher.add_handler(tag_handler)
 dispatcher.add_handler(forward_handler)
-dispatcher.add_handler(message_keyboard_handler)
+dispatcher.add_handler(search_handler)
+dispatcher.add_handler(message_update_tag_handler)
+dispatcher.add_handler(message_update_done_handler)
 updater.start_polling()

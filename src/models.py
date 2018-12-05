@@ -29,6 +29,9 @@ class Message(BaseModel):
     def update_tag(self, tag_id):
         return update_message_tag(self, tag_id)
 
+    def get_by_tags(tags):
+        return messages_by_tags(tags)
+
 class Tag(BaseModel):
     title = CharField()
     user = ForeignKeyField(User, backref='tags')
@@ -53,6 +56,17 @@ def message_tags(message):
             .select(Tag)
             .join(MessageTags, JOIN.LEFT_OUTER)
             .where(MessageTags.message == message))
+
+def messages_by_tags(tags):
+    messages = (Message
+                .select(Message)
+                .where(Message.id << (
+                    MessageTags
+                    .select(MessageTags.message_id)
+                    .where(MessageTags.tag_id << [tag.id for tag in tags])
+                    .group_by(MessageTags.message_id)
+                    .having(fn.count(MessageTags.tag_id) == len(tags)))))
+    return messages
 
 def update_message_tag(message, tag_id):
     message_tag = (MessageTags
