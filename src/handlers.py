@@ -1,4 +1,5 @@
 from telegram import InlineKeyboardMarkup, InlineKeyboardButton
+from telegram.error import BadRequest
 from src.models import User, Tag, Message
 import json
 
@@ -29,6 +30,13 @@ def search_messages(bot, update, args):
                              _current_user(update.message.from_user),
                              message))
 
+
+def update_message_tags(bot, update):
+    callback_data = _parse_callback_data(update.callback_query.data)
+    message = Message.get(Message.telegram_id == update.callback_query.message.message_id)
+    _edit_message_markup(bot, update, message)
+
+
 def bookmark(bot, update):
     _resend_message_with_markup(bot, update)
 
@@ -37,13 +45,7 @@ def set_bookmark(bot, update):
     callback_data = _parse_callback_data(update.callback_query.data)
     message = Message.get(Message.telegram_id == update.callback_query.message.message_id)
     message.update_tag(callback_data['tag_id'])
-
-    bot.edit_message_reply_markup(
-            chat_id=update.callback_query.message.chat_id,
-            message_id=update.callback_query.message.message_id,
-            reply_markup=_build_markup(
-                _current_user(update.callback_query.from_user),
-                message))
+    _edit_message_markup(bot, update, message)
 
 def clear_message_from_history(bot, update):
     callback_data = _parse_callback_data(update.callback_query.data)
@@ -66,6 +68,15 @@ def _resend_message_with_markup(bot, update):
     message.save()
 
 
+def _edit_message_markup(bot, update, message):
+    bot.edit_message_reply_markup(
+            chat_id=update.callback_query.message.chat_id,
+            message_id=update.callback_query.message.message_id,
+            reply_markup=_build_markup(
+                _current_user(update.callback_query.from_user),
+                message,
+                _current_page(update)))
+
 def _current_user(telegram_user):
     user, _ = User.get_or_create(
                 id=telegram_user.id,
@@ -77,16 +88,26 @@ def _current_user(telegram_user):
 def _current_message(update):
     return Message.get(Message.telegram_id == update.message.id)
 
-def _build_markup(user, message):
-    tags = user.popular_tags()
+def _current_page(update):
+    callback_data = _parse_callback_data(update.callback_query.data)
+    if callback_data['page'] and callback_data['page'] > 0:
+        return callback_data['page']
+    else:
+        return 1
+
+def _build_markup(user, message, page=1):
+    max_page = user.max_tag_page()
+    if max_page < page:
+        page = max_page
+    tags = user.popular_tags(page)
     current_tags = [tag.title for tag in message.all_tags()]
     row = []
     markup = []
 
     for tag in tags:
         row.append(InlineKeyboardButton(
-                    ("✔ " if tag.title in current_tags else "❌ ") + tag.title,
-                    callback_data=_build_tag_callback_data(tag)))
+                    ("✅ " if tag.title in current_tags else "❌ ") + tag.title,
+                    callback_data=_build_tag_callback_data(tag, page)))
 
         if len(row) == MAX_BUTTONS_IN_ROW:
             markup.append(row)
@@ -95,13 +116,18 @@ def _build_markup(user, message):
     if len(row):
         markup.append(row)
 
-    markup.append([InlineKeyboardButton(
-                    'Done', callback_data=_build_done_callback_data())])
+    footer = []
+    if page != 1:
+        footer.append(InlineKeyboardButton('<', callback_data=json.dumps({'page': page - 1})))
+    footer.append(InlineKeyboardButton('Done', callback_data=_build_done_callback_data()))
+    if page != max_page:
+        footer.append(InlineKeyboardButton('>', callback_data=json.dumps({'page': page + 1})))
 
+    markup.append(footer)
     return InlineKeyboardMarkup(markup)
 
-def _build_tag_callback_data(tag):
-    return json.dumps({'tag_id': tag.id})
+def _build_tag_callback_data(tag, current_page):
+    return json.dumps({'tag_id': tag.id, 'page': current_page})
 
 def _build_done_callback_data():
     return json.dumps({'done': True})

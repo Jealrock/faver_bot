@@ -23,6 +23,9 @@ message_update_tag_handler = CallbackQueryHandler(
 message_update_done_handler = CallbackQueryHandler(
         handlers.clear_message_from_history,
         pattern="^.*?\\bdone\\b.*?$")
+message_pagination_handler= CallbackQueryHandler(
+        handlers.update_message_tags,
+        pattern="^.*?\\bpage\\b.*?$")
 
 dispatcher.add_handler(start_handler)
 dispatcher.add_handler(tag_handler)
@@ -30,4 +33,5 @@ dispatcher.add_handler(forward_handler)
 dispatcher.add_handler(search_handler)
 dispatcher.add_handler(message_update_tag_handler)
 dispatcher.add_handler(message_update_done_handler)
+dispatcher.add_handler(message_pagination_handler)
 updater.start_polling()

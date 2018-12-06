@@ -14,9 +14,11 @@ class User(BaseModel):
     first_name = CharField(null=True)
     last_name = CharField(null=True)
 
-    def popular_tags(self):
-        return popular_tags(self)
+    def popular_tags(self, page=1):
+        return popular_tags(self, page=page)
 
+    def max_tag_page(self):
+        return tags_max_page(self)
 
 class Message(BaseModel):
     text = CharField()
@@ -41,7 +43,7 @@ class MessageTags(BaseModel):
     tag = ForeignKeyField(Tag)
 
 
-def popular_tags(user, amount=3):
+def popular_tags(user, amount=3, page=1):
     count = fn.COUNT(MessageTags.id)
     return (Tag
             .select(Tag, count.alias('entry_count'))
@@ -49,7 +51,15 @@ def popular_tags(user, amount=3):
             .join(Message, JOIN.LEFT_OUTER)
             .where(Tag.user == user)
             .group_by(Tag)
-            .order_by(count.desc(), Tag.title)[:amount])
+            .order_by(fn.COUNT(MessageTags.id).desc(), Tag.title)
+            .paginate(page, paginate_by=amount))
+
+def tags_max_page(user):
+    tags_count = user.tags.count()
+    if tags_count%3 == 0:
+        return tags_count/3
+    else:
+        return round(tags_count/3) + 1
 
 def message_tags(message):
     return (Tag
