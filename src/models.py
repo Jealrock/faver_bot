@@ -8,19 +8,19 @@ class BaseModel(Model):
     class Meta:
         database = db
 
-class User(BaseModel):
+class User(Model):
     id = BigIntegerField(primary_key=True, index=True)
     username = CharField(null=True)
     first_name = CharField(null=True)
     last_name = CharField(null=True)
 
-    def popular_tags(self, page=1):
+    def popular_tags(self, page=1, amount=3):
         return popular_tags(self, page=page)
 
     def max_tag_page(self):
         return tags_max_page(self)
 
-class Message(BaseModel):
+class Message(Model):
     text = CharField()
     telegram_id = BigIntegerField(index=True, null=True)
     user = ForeignKeyField(User, backref='messages')
@@ -34,11 +34,11 @@ class Message(BaseModel):
     def get_by_tags(tags):
         return messages_by_tags(tags)
 
-class Tag(BaseModel):
+class Tag(Model):
     title = CharField()
     user = ForeignKeyField(User, backref='tags')
 
-class MessageTags(BaseModel):
+class MessageTags(Model):
     message = ForeignKeyField(Message)
     tag = ForeignKeyField(Tag)
 
@@ -56,7 +56,7 @@ def popular_tags(user, amount=3, page=1):
 
 def tags_max_page(user):
     tags_count = user.tags.count()
-    if tags_count%3 == 0:
+    if tags_count % 3 == 0:
         return tags_count/3
     else:
         return round(tags_count/3) + 1

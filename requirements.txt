@@ -1,0 +1,9 @@
+python-dotenv
+python-telegram-bot
+psycopg2-binary
+peewee
+pytest
+mock
+factory_boy
+factory_boy-peewee
+faker
