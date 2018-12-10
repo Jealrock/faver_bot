@@ -2,11 +2,6 @@ from peewee import (
     CharField, BigIntegerField, Model, ForeignKeyField,
     fn, JOIN
 )
-from database import db
-
-class BaseModel(Model):
-    class Meta:
-        database = db
 
 class User(Model):
     id = BigIntegerField(primary_key=True, index=True)

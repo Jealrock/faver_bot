@@ -5,10 +5,13 @@ import os
 import logging
 from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackQueryHandler
 from src import handlers
+from database import db
+import db_initializer
 
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
                     level=logging.INFO)
 
+db_initializer.bind_models_to_db(db)
 updater = Updater(token=os.getenv('BOT_TOKEN'))
 dispatcher = updater.dispatcher
 start_handler = CommandHandler('start', handlers.start)

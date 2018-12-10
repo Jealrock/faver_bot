@@ -16,7 +16,6 @@ class UserFactory(PeeweeModelFactory):
 class MessageFactory(PeeweeModelFactory):
     class Meta:
         model = models.Message
-        database = db
 
     text = factory.Faker('sentence')
     telegram_id = factory.Sequence(lambda n: n)
@@ -25,7 +24,6 @@ class MessageFactory(PeeweeModelFactory):
 class TagFactory(PeeweeModelFactory):
     class Meta:
         model = models.Tag
-        database = db
 
     title = factory.Faker('sentence', nb_words=1)
     user = factory.SubFactory(UserFactory)
@@ -33,7 +31,6 @@ class TagFactory(PeeweeModelFactory):
 class MessageTagsFactory(PeeweeModelFactory):
     class Meta:
         model = models.MessageTags
-        database = db
 
     message = factory.SubFactory(MessageFactory)
     tag = factory.SubFactory(TagFactory)

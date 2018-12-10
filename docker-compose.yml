@@ -1,0 +1,25 @@
+version: '3'
+
+services:
+  app:
+    build: .
+    volumes:
+      - /usr/src/app
+    env_file:
+      - .env.production
+    depends_on:
+      - db
+  db:
+    image: postgres
+    volumes:
+      - /var/lib/postgresql/data
+    env_file:
+      - .env.production
+        #  traefik:
+        #image: traefik
+        # command: --api --docker
+        #volumes:
+        #- /var/run/docker.sock:/var/run/docker.sockr
+        #ports:
+        #- 80:80
+        #- 443:443
