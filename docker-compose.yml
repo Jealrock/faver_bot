@@ -1,5 +1,8 @@
 version: '3'
 
+volumes:
+  app_db:
+
 services:
   app:
     build: .
@@ -12,7 +15,7 @@ services:
   db:
     image: postgres
     volumes:
-      - /var/lib/postgresql/data
+      - app_db:/var/lib/postgresql/data
     env_file:
       - .env.production
         #  traefik:

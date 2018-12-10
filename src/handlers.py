@@ -57,10 +57,11 @@ def clear_message_from_history(bot, update):
 def _resend_message_with_markup(bot, update):
     # !!! Only 8 messages in a row available
     # !!! Any number of rows available(at high numbers breaks shit)
-    message, _ = Message.get_or_create(text=update.message.caption,
+    message_text = _get_message_text(update)
+    message, _ = Message.get_or_create(text=message_text,
                                        user=_current_user(update.message.from_user))
     telegram_message = bot.send_message(chat_id=update.message.chat_id,
-                                        text=update.message.caption,
+                                        text=message_text,
                                         reply_markup=_build_markup(
                                             _current_user(update.message.from_user),
                                             message))
@@ -94,6 +95,12 @@ def _current_page(update):
         return callback_data['page']
     else:
         return 1
+
+def _get_message_text(update):
+    if update.message.text:
+        return update.message.text
+    else:
+        return update.message.caption
 
 def _build_markup(user, message, page=1):
     max_page = user.max_tag_page()

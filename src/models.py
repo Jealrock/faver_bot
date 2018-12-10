@@ -1,5 +1,6 @@
 from peewee import (
-    CharField, BigIntegerField, Model, ForeignKeyField,
+    CharField, BigIntegerField, Model,
+    ForeignKeyField, TextField,
     fn, JOIN
 )
 
@@ -16,7 +17,7 @@ class User(Model):
         return tags_max_page(self)
 
 class Message(Model):
-    text = CharField()
+    text = TextField()
     telegram_id = BigIntegerField(index=True, null=True)
     user = ForeignKeyField(User, backref='messages')
 
@@ -53,6 +54,8 @@ def tags_max_page(user):
     tags_count = user.tags.count()
     if tags_count % 3 == 0:
         return tags_count/3
+    elif tags_count < 3:
+        return 1
     else:
         return round(tags_count/3) + 1
 
