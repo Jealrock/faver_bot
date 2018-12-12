@@ -1,8 +1,8 @@
 import pytest
-import telegram
 from .context import handlers, models
-from .factories import *
+from .factories import TagFactory, MessageFactory, MessageTagsFactory
 import mock
+
 
 @pytest.mark.usefixtures("init_tables")
 class TestCommands(object):
@@ -41,11 +41,12 @@ class TestCommands(object):
         handlers.search_messages(bot, telegram_update_command, [tag.title])
         assert bot.send_message.call_count == len(messages)
 
+
 @pytest.mark.usefixtures("init_tables")
 class TestInlineCallbacks(object):
     @mock.patch('telegram.Bot.edit_message_reply_markup')
     def test_update_message_tags(self, bot, telegram_update_callback_tag, mocker):
-        message = MessageFactory.create(telegram_id=1)
+        MessageFactory.create(telegram_id=1)
         tag = TagFactory.create()
         mocker.patch.object(models.User, 'popular_tags', return_value=[tag])
         handlers.update_message_tags(bot, telegram_update_callback_tag)
@@ -55,7 +56,7 @@ class TestInlineCallbacks(object):
 
     @mock.patch('telegram.Bot.edit_message_reply_markup')
     def test_set_bookmark(self, bot, telegram_update_callback_tag):
-        message = MessageFactory.create(telegram_id=1)
+        MessageFactory.create(telegram_id=1)
         tag = TagFactory.create()
         handlers.set_bookmark(bot, telegram_update_callback_tag)
 
@@ -67,10 +68,11 @@ class TestInlineCallbacks(object):
 
     @mock.patch('telegram.Bot.delete_message')
     def test_clear_message_from_history(self, bot, telegram_update_callback_done):
-        message = MessageFactory.create(telegram_id=1)
+        MessageFactory.create(telegram_id=1)
         handlers.clear_message_from_history(bot, telegram_update_callback_done)
 
         bot.delete_message.assert_called_once_with(chat_id=1, message_id=1)
+
 
 @pytest.mark.usefixtures("init_tables")
 class TestForwardMessages(object):

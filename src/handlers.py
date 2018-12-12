@@ -1,15 +1,15 @@
 from telegram import InlineKeyboardMarkup, InlineKeyboardButton
-from telegram.error import BadRequest
 from src.models import User, Tag, Message
 import json
 
 MAX_BUTTONS_IN_ROW = 2
 
+
 def start(bot, update):
-    tags = ', '.join([tag.title for tag in _current_user(update.message.from_user).tags])
+    tags = [tag.title for tag in _current_user(update.message.from_user).tags]
     if tags:
         bot.send_message(chat_id=update.message.chat_id,
-                         text=tags)
+                         text=', '.join(tags))
     else:
         bot.send_message(chat_id=update.message.chat_id,
                          text='Add some tags')
@@ -18,6 +18,7 @@ def start(bot, update):
 def add_tag(bot, update, args):
     Tag.create(user=_current_user(update.message.from_user),
                title=args[0])
+
 
 def search_messages(bot, update, args):
     tags = Tag.select(Tag).where(Tag.title.in_(args))
@@ -32,8 +33,7 @@ def search_messages(bot, update, args):
 
 
 def update_message_tags(bot, update):
-    callback_data = _parse_callback_data(update.callback_query.data)
-    message = Message.get(Message.telegram_id == update.callback_query.message.message_id)
+    message = _current_message_from_callback(update)
     _edit_message_markup(bot, update, message)
 
 
@@ -43,9 +43,10 @@ def bookmark(bot, update):
 
 def set_bookmark(bot, update):
     callback_data = _parse_callback_data(update.callback_query.data)
-    message = Message.get(Message.telegram_id == update.callback_query.message.message_id)
+    message = _current_message_from_callback(update)
     message.update_tag(callback_data['tag_id'])
     _edit_message_markup(bot, update, message)
+
 
 def clear_message_from_history(bot, update):
     callback_data = _parse_callback_data(update.callback_query.data)
@@ -54,17 +55,20 @@ def clear_message_from_history(bot, update):
             chat_id=update.callback_query.message.chat_id,
             message_id=update.callback_query.message.message_id)
 
+
 def _resend_message_with_markup(bot, update):
     # !!! Only 8 messages in a row available
     # !!! Any number of rows available(at high numbers breaks shit)
     message_text = _get_message_text(update)
-    message, _ = Message.get_or_create(text=message_text,
-                                       user=_current_user(update.message.from_user))
-    telegram_message = bot.send_message(chat_id=update.message.chat_id,
-                                        text=message_text,
-                                        reply_markup=_build_markup(
-                                            _current_user(update.message.from_user),
-                                            message))
+    message, _ = Message.get_or_create(
+            text=message_text,
+            user=_current_user(update.message.from_user))
+    telegram_message = bot.send_message(
+            chat_id=update.message.chat_id,
+            text=message_text,
+            reply_markup=_build_markup(
+                _current_user(update.message.from_user),
+                message))
     message.telegram_id = telegram_message.message_id
     message.save()
 
@@ -78,6 +82,7 @@ def _edit_message_markup(bot, update, message):
                 message,
                 _current_page(update)))
 
+
 def _current_user(telegram_user):
     user, _ = User.get_or_create(
                 id=telegram_user.id,
@@ -86,8 +91,11 @@ def _current_user(telegram_user):
                           'username': telegram_user.username})
     return user
 
-def _current_message(update):
-    return Message.get(Message.telegram_id == update.message.id)
+
+def _current_message_from_callback(update):
+    return Message.get(
+            Message.telegram_id == update.callback_query.message.message_id)
+
 
 def _current_page(update):
     callback_data = _parse_callback_data(update.callback_query.data)
@@ -96,11 +104,13 @@ def _current_page(update):
     else:
         return 1
 
+
 def _get_message_text(update):
     if update.message.text:
         return update.message.text
     else:
         return update.message.caption
+
 
 def _build_markup(user, message, page=1):
     max_page = user.max_tag_page()
@@ -125,19 +135,25 @@ def _build_markup(user, message, page=1):
 
     footer = []
     if page != 1:
-        footer.append(InlineKeyboardButton('<', callback_data=json.dumps({'page': page - 1})))
-    footer.append(InlineKeyboardButton('Done', callback_data=_build_done_callback_data()))
+        footer.append(InlineKeyboardButton(
+            '<', callback_data=json.dumps({'page': page - 1})))
+    footer.append(InlineKeyboardButton(
+        'Done', callback_data=_build_done_callback_data()))
     if page != max_page:
-        footer.append(InlineKeyboardButton('>', callback_data=json.dumps({'page': page + 1})))
+        footer.append(InlineKeyboardButton(
+            '>', callback_data=json.dumps({'page': page + 1})))
 
     markup.append(footer)
     return InlineKeyboardMarkup(markup)
 
+
 def _build_tag_callback_data(tag, current_page):
     return json.dumps({'tag_id': tag.id, 'page': current_page})
 
+
 def _build_done_callback_data():
     return json.dumps({'done': True})
+
 
 def _parse_callback_data(data):
     return json.loads(data)

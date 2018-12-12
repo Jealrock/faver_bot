@@ -4,6 +4,7 @@ from peewee import (
     fn, JOIN
 )
 
+
 class User(Model):
     id = BigIntegerField(primary_key=True, index=True)
     username = CharField(null=True)
@@ -15,6 +16,7 @@ class User(Model):
 
     def max_tag_page(self):
         return tags_max_page(self)
+
 
 class Message(Model):
     text = TextField()
@@ -30,9 +32,11 @@ class Message(Model):
     def get_by_tags(tags):
         return messages_by_tags(tags)
 
+
 class Tag(Model):
     title = CharField()
     user = ForeignKeyField(User, backref='tags')
+
 
 class MessageTags(Model):
     message = ForeignKeyField(Message)
@@ -50,6 +54,7 @@ def popular_tags(user, amount=3, page=1):
             .order_by(fn.COUNT(MessageTags.id).desc(), Tag.title)
             .paginate(page, paginate_by=amount))
 
+
 def tags_max_page(user):
     tags_count = user.tags.count()
     if tags_count < 3:
@@ -59,11 +64,13 @@ def tags_max_page(user):
     else:
         return round(tags_count/3) + 1
 
+
 def message_tags(message):
     return (Tag
             .select(Tag)
             .join(MessageTags, JOIN.LEFT_OUTER)
             .where(MessageTags.message == message))
+
 
 def messages_by_tags(tags):
     messages = (Message
@@ -76,12 +83,13 @@ def messages_by_tags(tags):
                     .having(fn.count(MessageTags.tag_id) == len(tags)))))
     return messages
 
+
 def update_message_tag(message, tag_id):
     message_tag = (MessageTags
-                    .select(MessageTags)
-                    .join(Tag, JOIN.LEFT_OUTER)
-                    .where(MessageTags.message == message)
-                    .where(Tag.id == tag_id).first())
+                   .select(MessageTags)
+                   .join(Tag, JOIN.LEFT_OUTER)
+                   .where(MessageTags.message == message)
+                   .where(Tag.id == tag_id).first())
     if message_tag:
         message_tag.delete_instance()
     else:

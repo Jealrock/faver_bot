@@ -1,8 +1,7 @@
 import factory
-import itertools
 from factory_peewee import PeeweeModelFactory
-from peewee import SqliteDatabase
 from .context import models, db_initializer, db
+
 
 class UserFactory(PeeweeModelFactory):
     class Meta:
@@ -13,6 +12,7 @@ class UserFactory(PeeweeModelFactory):
     first_name = factory.Faker('first_name')
     last_name = factory.Faker('last_name')
 
+
 class MessageFactory(PeeweeModelFactory):
     class Meta:
         model = models.Message
@@ -21,6 +21,7 @@ class MessageFactory(PeeweeModelFactory):
     telegram_id = factory.Sequence(lambda n: n)
     user = factory.SubFactory(UserFactory)
 
+
 class TagFactory(PeeweeModelFactory):
     class Meta:
         model = models.Tag
@@ -28,12 +29,14 @@ class TagFactory(PeeweeModelFactory):
     title = factory.Faker('sentence', nb_words=1)
     user = factory.SubFactory(UserFactory)
 
+
 class MessageTagsFactory(PeeweeModelFactory):
     class Meta:
         model = models.MessageTags
 
     message = factory.SubFactory(MessageFactory)
     tag = factory.SubFactory(TagFactory)
+
 
 class MessageWithTagsFactory(MessageFactory):
     tags = 2
@@ -43,8 +46,10 @@ class MessageWithTagsFactory(MessageFactory):
         if create:
             MessageTagsFactory.create_batch(self.tags, message=self)
 
+
 def create_tables():
     db_initializer.create_tables(db)
+
 
 def drop_tables():
     db_initializer.drop_tables(db)

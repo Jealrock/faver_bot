@@ -7,5 +7,6 @@ import src.models as models
 import src.handlers as handlers
 import db_initializer
 
+
 db = SqliteDatabase(':memory:', autocommit=False)
 db.connect()

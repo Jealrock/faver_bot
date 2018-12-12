@@ -1,11 +1,10 @@
 import pytest
 from .factories import (
     UserFactory, MessageTagsFactory, MessageFactory, TagFactory,
-    MessageWithTagsFactory,
-    create_tables, drop_tables
+    MessageWithTagsFactory
 )
-from .context import db, models
-from playhouse.shortcuts import model_to_dict
+from .context import models
+
 
 @pytest.mark.usefixtures("init_tables")
 class TestMessage(object):
@@ -36,6 +35,7 @@ class TestMessage(object):
         assert models.Message.get_by_tags([tags[0], tags[1]]).count() == 1
         assert models.Message.get_by_tags([tags[0], tags[2]]).count() == 0
 
+
 @pytest.mark.usefixtures("init_tables")
 class TestUser(object):
     def test_popular_tags(self):
@@ -49,6 +49,6 @@ class TestUser(object):
 
     def test_max_tag_page(self):
         user = UserFactory()
-        tags = TagFactory.create_batch(10, user=user)
+        TagFactory.create_batch(10, user=user)
 
-        assert user.max_tag_page() == 4;
+        assert user.max_tag_page() == 4
