@@ -3,7 +3,7 @@ python-telegram-bot
 psycopg2-binary
 peewee
 pytest
-mock
+pytest-mock
 factory_boy
 factory_boy-peewee
 faker

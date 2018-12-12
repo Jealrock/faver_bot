@@ -52,10 +52,10 @@ def popular_tags(user, amount=3, page=1):
 
 def tags_max_page(user):
     tags_count = user.tags.count()
-    if tags_count % 3 == 0:
-        return tags_count/3
-    elif tags_count < 3:
+    if tags_count < 3:
         return 1
+    elif tags_count % 3 == 0:
+        return tags_count/3
     else:
         return round(tags_count/3) + 1
 

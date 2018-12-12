@@ -43,7 +43,6 @@ class MessageWithTagsFactory(MessageFactory):
         if create:
             MessageTagsFactory.create_batch(self.tags, message=self)
 
-
 def create_tables():
     db_initializer.create_tables(db)
 

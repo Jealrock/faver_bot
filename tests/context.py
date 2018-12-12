@@ -4,6 +4,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')
 
 from peewee import SqliteDatabase
 import src.models as models
+import src.handlers as handlers
 import db_initializer
 
 db = SqliteDatabase(':memory:', autocommit=False)
