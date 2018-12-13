@@ -1,9 +1,9 @@
 from dotenv import load_dotenv
 load_dotenv(dotenv_path='./.env.local')
 
-from src.models import User, Message, Tag, MessageTags
+from src.models import User, Message, Tag, MessageTags, ReplyMarkupMessage
 
-models = [User, Message, Tag, MessageTags]
+models = [User, Message, Tag, MessageTags, ReplyMarkupMessage]
 
 
 def create_tables(db):

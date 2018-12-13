@@ -45,10 +45,4 @@ class TestUser(object):
         for message in messages:
             message.update_tag(tags[1])
 
-        assert user.popular_tags(page=1, amount=1)[0] == tags[1]
-
-    def test_max_tag_page(self):
-        user = UserFactory()
-        TagFactory.create_batch(10, user=user)
-
-        assert user.max_tag_page() == 4
+        assert user.popular_tags()[0] == tags[1]

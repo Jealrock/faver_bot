@@ -3,7 +3,7 @@ from peewee import (
     ForeignKeyField, TextField,
     fn, JOIN
 )
-
+import json
 
 class User(Model):
     id = BigIntegerField(primary_key=True, index=True)
@@ -11,12 +11,8 @@ class User(Model):
     first_name = CharField(null=True)
     last_name = CharField(null=True)
 
-    def popular_tags(self, page=1, amount=3):
-        return popular_tags(self, page=page)
-
-    def max_tag_page(self):
-        return tags_max_page(self)
-
+    def popular_tags(self, page=1, per_page=3):
+        return popular_tags(self, page=page, per_page=per_page)
 
 class Message(Model):
     text = TextField()
@@ -29,9 +25,20 @@ class Message(Model):
     def update_tag(self, tag_id):
         return update_message_tag(self, tag_id)
 
-    def get_by_tags(tags):
-        return messages_by_tags(tags)
+    def get_by_tags(tags, page=1):
+        return messages_by_tags(tags, page)
+        messages = Message.get_by_tags(tags)
 
+class ReplyMarkupMessage(Model):
+    telegram_id = BigIntegerField(index=True)
+    params = CharField()
+    user = ForeignKeyField(User, backref='reply_markup_message')
+
+    def decoded_params(self):
+        return json.loads(self.params)
+
+    def search_params(tags, page=1):
+        return { 'action': 'search', 'page': page, 'tags': tags }
 
 class Tag(Model):
     title = CharField()
@@ -43,7 +50,7 @@ class MessageTags(Model):
     tag = ForeignKeyField(Tag)
 
 
-def popular_tags(user, amount=3, page=1):
+def popular_tags(user, page=3, per_page=1):
     count = fn.COUNT(MessageTags.id)
     return (Tag
             .select(Tag, count.alias('entry_count'))
@@ -52,17 +59,7 @@ def popular_tags(user, amount=3, page=1):
             .where(Tag.user == user)
             .group_by(Tag)
             .order_by(fn.COUNT(MessageTags.id).desc(), Tag.title)
-            .paginate(page, paginate_by=amount))
-
-
-def tags_max_page(user):
-    tags_count = user.tags.count()
-    if tags_count < 3:
-        return 1
-    elif tags_count % 3 == 0:
-        return tags_count/3
-    else:
-        return round(tags_count/3) + 1
+            .paginate(page, paginate_by=per_page))
 
 
 def message_tags(message):
@@ -72,7 +69,7 @@ def message_tags(message):
             .where(MessageTags.message == message))
 
 
-def messages_by_tags(tags):
+def messages_by_tags(tags, page):
     messages = (Message
                 .select(Message)
                 .where(Message.id << (
@@ -95,3 +92,12 @@ def update_message_tag(message, tag_id):
     else:
         MessageTags.create(message=message,
                            tag=Tag.get_by_id(tag_id))
+
+
+def current_user(telegram_user):
+    user, _ = User.get_or_create(
+                id=telegram_user.id,
+                defaults={'first_name': telegram_user.first_name,
+                          'last_name': telegram_user.last_name,
+                          'username': telegram_user.username})
+    return user
