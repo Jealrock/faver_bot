@@ -46,3 +46,11 @@ class TestUser(object):
             message.update_tag(tags[1])
 
         assert user.popular_tags()[0] == tags[1]
+
+    def test_untagged_messages(self):
+        user = UserFactory()
+        tag = TagFactory(user=user)
+        messages = MessageFactory.create_batch(4, user=user)
+        messages[0].update_tag(tag)
+
+        assert user.untagged_messages().count() == 3

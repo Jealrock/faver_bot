@@ -1,5 +1,5 @@
 from telegram import ReplyKeyboardMarkup, KeyboardButton
-from src.models import ReplyMarkupMessage, current_user
+
 
 def pagination_keyboard():
     markup = []

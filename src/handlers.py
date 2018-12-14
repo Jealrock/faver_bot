@@ -1,7 +1,7 @@
 from telegram import InlineKeyboardMarkup, InlineKeyboardButton
 from enum import Enum
 from src.models import (
-    User, Tag, Message, ReplyMarkupMessage, current_user
+    Tag, Message, ReplyMarkupMessage, current_user
 )
 from src.reply_keyboards import pagination_keyboard
 import json
@@ -11,6 +11,7 @@ MAX_BUTTONS_IN_ROW = 2
 TAGS_PER_PAGE = 3
 FORWARDED_MESSAGES_PER_PAGE = 3
 SENDED_MESSAGES_PER_PAGE = 3
+
 
 class TelegramHandler:
     def __init__(self, bot, update):
@@ -40,12 +41,7 @@ class TelegramHandler:
                                   text=message.text,
                                   reply_markup=self._build_markup(message))
 
-    def _send_reply_markup(self, text, reply_markup, params):
-        chat_id = self.update.message.chat_id
-        previous_message = self.user.reply_markup_message
-        if previous_message.exists():
-            self.bot.delete_message(chat_id=chat_id,
-                                    message_id=previous_message.get().telegram_id)
+    def _send_reply_markup(self, chat_id, text, reply_markup, params):
         message = self.bot.send_message(
                          chat_id=chat_id,
                          text=text,
@@ -65,8 +61,8 @@ class TelegramHandler:
 
         for tag in tags:
             row.append(InlineKeyboardButton(
-                        ("✅ " if tag.title in current_tags else "❌ ") + tag.title,
-                        callback_data=self._build_tag_callback_data(tag, page)))
+                       ("✅ " if tag.title in current_tags else "❌ ") + tag.title,
+                       callback_data=self._build_tag_callback_data(tag, page)))
 
             if len(row) == MAX_BUTTONS_IN_ROW:
                 markup.append(row)
@@ -94,6 +90,7 @@ class TelegramHandler:
     def _build_done_callback_data(self):
         return json.dumps({'done': True})
 
+
 class CommandHandler(TelegramHandler):
     def __init__(self, bot, update, args=None):
         super().__init__(bot, update)
@@ -116,8 +113,8 @@ class CommandHandler(TelegramHandler):
 
     def search_messages(self):
         tags = (Tag.select(Tag)
-                  .where(Tag.user == self.user)
-                  .where(Tag.title.in_(self.args)))
+                   .where(Tag.user == self.user)
+                   .where(Tag.title.in_(self.args)))
         messages = Message.get_by_tags(tags)
         messages = messages.paginate(1, paginate_by=SENDED_MESSAGES_PER_PAGE)
 
@@ -140,27 +137,44 @@ class CommandHandler(TelegramHandler):
         to_index = from_index + self.update.message.entities[0].length
         return self.update.message.text[from_index:to_index]
 
+    def _send_reply_markup(self, text, reply_markup, params):
+        chat_id = self.update.message.chat_id
+        previous_message = self.user.reply_markup_message
+        if previous_message.exists():
+            self.bot.delete_message(
+                chat_id=chat_id,
+                message_id=previous_message.get().telegram_id)
+        super()._send_reply_markup(chat_id, text, reply_markup, params)
+
 
 class ForwardMessageHandler(TelegramHandler):
     def __init__(self, bot, update, args=None):
         super().__init__(bot, update)
         self.user = current_user(update.message.from_user)
-        self._resend_message_with_markup()
+        self.message, _ = Message.get_or_create(
+            text=self._get_message_text(),
+            user=self.user)
+        self.previous_markup = self.user.reply_markup_message
+        if ((not self._is_full_page()) or
+           (not self.previous_markup.exists()) or
+           (not self.previous_markup.get().is_recent())):
+            self._resend_message_with_markup()
 
     def _resend_message_with_markup(self):
         # !!! Only 8 messages in a row available
         # !!! Any number of rows available(at high numbers breaks shit)
-        message_text = self._get_message_text()
-        message, _ = Message.get_or_create(
-                text=message_text,
-                user=self.user)
 
+        self._send_reply_markup(
+            'Messages: ',
+            pagination_keyboard(),
+            json.dumps(
+                ReplyMarkupMessage.forward_params()))
         telegram_message = self.bot.send_message(
                 chat_id=self.update.message.chat_id,
-                text=message_text,
-                reply_markup=self._build_markup(message))
-        message.telegram_id = telegram_message.message_id
-        message.save()
+                text=self.message.text,
+                reply_markup=self._build_markup(self.message))
+        self.message.telegram_id = telegram_message.message_id
+        self.message.save()
 
     def _get_message_text(self):
         if self.update.message.text:
@@ -168,11 +182,27 @@ class ForwardMessageHandler(TelegramHandler):
         else:
             return self.update.message.caption
 
+    def _is_full_page(self):
+        if (self.user.messages.where(Message.telegram_id is not None).count() <
+                FORWARDED_MESSAGES_PER_PAGE):
+            return False
+        else:
+            return True
+
+    def _send_reply_markup(self, text, reply_markup, params):
+        chat_id = self.update.message.chat_id
+        if (self.previous_markup.exists() and
+                (not self.previous_markup.get().is_recent())):
+            self.bot.delete_message(chat_id=chat_id,
+                                    message_id=self.previous_markup.get().telegram_id)
+        super()._send_reply_markup(chat_id, text, reply_markup, params)
+
+
 class InlineCallbackHandler(TelegramHandler):
     class Action(Enum):
         SET_TAG = "^.*?\\btag_id\\b.*?$"
         DONE = "^.*?\\bdone\\b.*?$"
-        PAGINATE="^.*?\\bpage\\b.*?$"
+        PAGINATE = "^.*?\\bpage\\b.*?$"
 
         @classmethod
         def match(cls, callback_data):
@@ -196,6 +226,7 @@ class InlineCallbackHandler(TelegramHandler):
         self._edit_message_markup()
 
     def clear_message_from_history(self):
+        self.message.update({'telegram_id', None})
         self.bot.delete_message(
             chat_id=self.update.callback_query.message.chat_id,
             message_id=self.update.callback_query.message.message_id)
@@ -233,12 +264,31 @@ class ReplyKeyboardCallbackHandler(TelegramHandler):
         super().__init__(bot, update)
         self.user = current_user(update.message.from_user)
         self.current_params = self.user.reply_markup_message.get().decoded_params()
-        self.get_messages()
+        self._call_handler()
 
-    def get_messages(self):
+    def get_forwarded_messages(self):
+        messages = self.user.untagged_messages()
+
+        if self.update.message.text == '<':
+            page = self.current_params['page'] - 1
+        elif self.update.message.text == '>':
+            page = self.current_params['page'] + 1
+        page = self._correct_page(
+                page,
+                self._max_page(messages, FORWARDED_MESSAGES_PER_PAGE))
+        messages = messages.paginate(page, paginate_by=FORWARDED_MESSAGES_PER_PAGE)
+
+        self._send_reply_markup(
+                self.update.message.chat_id,
+                'Messages: ',
+                pagination_keyboard(),
+                json.dumps(ReplyMarkupMessage.forward_params(page)))
+        self._send_messages(messages)
+
+    def get_sended_messages(self):
         tags = (Tag.select(Tag)
-                  .where(Tag.user == self.user)
-                  .where(Tag.title.in_(self.current_params['tags'])))
+                .where(Tag.user == self.user)
+                .where(Tag.title.in_(self.current_params['tags'])))
         messages = Message.get_by_tags(tags)
 
         if self.update.message.text == '<':
@@ -251,7 +301,14 @@ class ReplyKeyboardCallbackHandler(TelegramHandler):
         messages = messages.paginate(page, paginate_by=SENDED_MESSAGES_PER_PAGE)
 
         self._send_reply_markup(
+                self.update.message.chat_id,
                 'Messages: ',
                 pagination_keyboard(),
                 json.dumps(ReplyMarkupMessage.search_params(self.current_params['tags'], page)))
         self._send_messages(messages)
+
+    def _call_handler(self):
+        {
+            'search': self.get_sended_messages,
+            'forward': self.get_forwarded_messages,
+        }[self.current_params['action']]()

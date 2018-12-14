@@ -1,9 +1,11 @@
 from peewee import (
     CharField, BigIntegerField, Model,
-    ForeignKeyField, TextField,
+    ForeignKeyField, TextField, DateTimeField,
     fn, JOIN
 )
 import json
+from datetime import datetime, timedelta
+
 
 class User(Model):
     id = BigIntegerField(primary_key=True, index=True)
@@ -13,6 +15,10 @@ class User(Model):
 
     def popular_tags(self, page=1, per_page=3):
         return popular_tags(self, page=page, per_page=per_page)
+
+    def untagged_messages(self):
+        return get_untagged_messages(self)
+
 
 class Message(Model):
     text = TextField()
@@ -27,18 +33,29 @@ class Message(Model):
 
     def get_by_tags(tags, page=1):
         return messages_by_tags(tags, page)
-        messages = Message.get_by_tags(tags)
+
 
 class ReplyMarkupMessage(Model):
     telegram_id = BigIntegerField(index=True)
     params = CharField()
     user = ForeignKeyField(User, backref='reply_markup_message')
+    created_at = DateTimeField(default=datetime.now)
+
+    def is_recent(self):
+        if self.created_at < (datetime.now() - timedelta(minutes=1)):
+            return False
+        else:
+            return True
 
     def decoded_params(self):
         return json.loads(self.params)
 
     def search_params(tags, page=1):
-        return { 'action': 'search', 'page': page, 'tags': tags }
+        return {'action': 'search', 'page': page, 'tags': tags}
+
+    def forward_params(page=1):
+        return {'action': 'forward', 'page': page}
+
 
 class Tag(Model):
     title = CharField()
@@ -67,6 +84,15 @@ def message_tags(message):
             .select(Tag)
             .join(MessageTags, JOIN.LEFT_OUTER)
             .where(MessageTags.message == message))
+
+
+def get_untagged_messages(user):
+    return (Message
+            .select(Message)
+            .where(user == user)
+            .where(Message.id.not_in(
+                MessageTags.select(MessageTags.message_id)
+            )))
 
 
 def messages_by_tags(tags, page):

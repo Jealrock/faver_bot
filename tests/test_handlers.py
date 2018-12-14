@@ -90,6 +90,6 @@ class TestForwardMessages(object):
     def test_bookmark(self, bot, telegram_update_message_forward, test_user, mocker):
         handlers.ForwardMessageHandler(bot, telegram_update_message_forward)
 
-        bot.send_message.assert_called_once()
+        assert bot.send_message.call_count == 2
         assert models.Message.select().count() == 1
         assert models.Message.select().first().telegram_id == 1
